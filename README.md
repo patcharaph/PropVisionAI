@@ -9,6 +9,9 @@ AI-powered virtual staging for real estate properties. Upload a room photo, sele
 - **AI Virtual Staging** - Modern Scandinavian interior design transformation
 - **Before/After Slider** - Interactive comparison view
 - **Renovation Cost Estimate** - Thailand market pricing (LOW/MID/HIGH tiers)
+- **Analytics Dashboard** - Track generation time, error rate, cost per day
+- **Timeout Protection** - Fallback if AI takes > 20 seconds
+- **Conversion Tracking** - Upload, generate, share events
 
 ## Tech Stack
 
@@ -24,8 +27,8 @@ AI-powered virtual staging for real estate properties. Upload a room photo, sele
 - Supabase (database + storage)
 
 ### AI Services
-- OpenRouter (room analysis)
-- Fal.ai (image transformation)
+- OpenRouter / Claude 3 Haiku (room analysis)
+- Fal.ai / Flux (image transformation)
 
 ## Getting Started
 
@@ -37,6 +40,9 @@ npm install
 
 # Start dev server
 npm run dev
+
+# Generate icons (optional)
+npm run generate-icons
 ```
 
 ### Backend
@@ -69,6 +75,7 @@ SUPABASE_URL=your-supabase-url
 SUPABASE_SERVICE_KEY=your-service-key
 OPENROUTER_API_KEY=your-openrouter-key
 FAL_API_KEY=your-fal-key
+ADMIN_API_KEY=your-secret-admin-key
 ```
 
 ## Project Structure
@@ -79,16 +86,48 @@ PropVisionAI/
 │   ├── components/       # Reusable UI components
 │   ├── context/          # React context (StagingContext)
 │   ├── pages/            # Page components
+│   │   ├── LandingPage.jsx
+│   │   ├── PreviewPage.jsx
+│   │   ├── ResultPage.jsx
+│   │   └── AdminDashboard.jsx
 │   ├── services/         # API services
 │   └── App.jsx           # Main app with routing
 ├── backend/
 │   ├── src/
-│   │   ├── services/     # Business logic
-│   │   └── index.js      # Express server
-│   ├── Dockerfile        # Cloud Run deployment
-│   └── supabase-schema.sql
-└── public/
+│   │   ├── services/
+│   │   │   ├── staging.js    # AI generation logic
+│   │   │   ├── quota.js      # User quota management
+│   │   │   └── analytics.js  # Event tracking & logging
+│   │   └── index.js          # Express server
+│   ├── Dockerfile            # Cloud Run deployment
+│   └── supabase-schema.sql   # Database schema
+├── public/
+│   └── icons/            # App icons (SVG + PNG)
+└── scripts/
+    └── generate-icons.js # Icon generation script
 ```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/generate` | Generate staged image |
+| GET | `/api/quota/:userId` | Check user quota |
+| POST | `/api/track/upload` | Track upload event |
+| POST | `/api/track/share` | Track share event |
+| POST | `/api/feedback` | Submit user feedback |
+| GET | `/api/admin/stats` | Get dashboard stats (protected) |
+
+## Admin Dashboard
+
+Access at `/admin` to view:
+- Total generations
+- Average generation time
+- Error rate
+- Daily API costs
+- Conversion funnel (Upload → Generate → Success → Share)
+
+Protected by `ADMIN_API_KEY` environment variable.
 
 ## Renovation Cost Model (Thailand - Beta)
 
@@ -97,6 +136,13 @@ PropVisionAI/
 | S (<20 sqm) | ฿80K | ฿150K | ฿300K |
 | M (20-40 sqm) | ฿120K | ฿300K | ฿600K |
 | L (40+ sqm) | ฿250K | ฿600K | ฿1.2M |
+
+## Timeout Protection
+
+If Fal.ai image generation exceeds 20 seconds:
+- Returns fallback placeholder image
+- Logs `generate_timeout` event
+- User still sees result (with fallback)
 
 ## Beta Limitations
 
@@ -117,6 +163,12 @@ npm run build
 ```bash
 cd backend
 gcloud run deploy propvisionai-api --source .
+```
+
+### Supabase Setup
+```bash
+# Run the schema in Supabase SQL Editor
+# File: backend/supabase-schema.sql
 ```
 
 ## License

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Camera, ImagePlus } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 import { useStaging } from '../context/StagingContext'
+import { trackUpload } from '../services/api'
 import BetaBadge from '../components/BetaBadge'
 
 export default function LandingPage() {
@@ -25,6 +26,10 @@ export default function LandingPage() {
       
       setOriginalImage(compressedFile)
       setOriginalImageUrl(imageUrl)
+      
+      // Track upload event
+      trackUpload()
+      
       navigate('/preview')
     } catch (error) {
       console.error('Error compressing image:', error)

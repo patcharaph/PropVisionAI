@@ -1,3 +1,5 @@
+import { logGeneration, trackEvent, EVENT_TYPES } from './analytics.js'
+
 const RENOVATION_COSTS = {
   S: { LOW: 80000, MID: 150000, HIGH: 300000 },
   M: { LOW: 120000, MID: 300000, HIGH: 600000 },
@@ -10,17 +12,68 @@ const ROOM_DENSITY_PROMPTS = {
   L: 'spacious layout, multiple furniture groupings, generous spacing',
 }
 
-export async function generateStaging(imageBuffer, roomSize) {
-  // Step 1: Analyze room with OpenRouter
-  const roomAnalysis = await analyzeRoom(imageBuffer)
-  
-  // Step 2: Generate staged image with Fal.ai
-  const generatedImage = await generateImage(imageBuffer, roomSize, roomAnalysis)
-  
-  return {
-    imageUrl: generatedImage.url,
-    roomType: roomAnalysis.roomType,
-    costs: RENOVATION_COSTS[roomSize]
+// API cost estimates (USD)
+const API_COSTS = {
+  OPENROUTER_HAIKU: 0.0003, // ~$0.25/1M input + image
+  FAL_FLUX: 0.01, // ~$0.01 per image
+}
+
+const FAL_TIMEOUT_MS = 20000 // 20 seconds timeout
+
+export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous') {
+  const startTime = Date.now()
+  let roomAnalysis = { roomType: 'living room', features: [] }
+  let apiCost = 0
+
+  try {
+    await trackEvent(EVENT_TYPES.GENERATE_START, { userId, roomSize })
+
+    // Step 1: Analyze room with OpenRouter
+    roomAnalysis = await analyzeRoom(imageBuffer)
+    apiCost += API_COSTS.OPENROUTER_HAIKU
+    
+    // Step 2: Generate staged image with Fal.ai (with timeout)
+    const generatedImage = await generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis)
+    apiCost += API_COSTS.FAL_FLUX
+
+    const durationMs = Date.now() - startTime
+
+    // Log successful generation
+    await logGeneration({
+      userId,
+      roomSize,
+      roomType: roomAnalysis.roomType,
+      durationMs,
+      success: true,
+      apiCost,
+    })
+
+    await trackEvent(EVENT_TYPES.GENERATE_SUCCESS, { userId, roomSize, durationMs })
+    
+    return {
+      imageUrl: generatedImage.url,
+      roomType: roomAnalysis.roomType,
+      costs: RENOVATION_COSTS[roomSize],
+      durationMs,
+      timedOut: generatedImage.timedOut || false,
+    }
+  } catch (error) {
+    const durationMs = Date.now() - startTime
+
+    // Log failed generation
+    await logGeneration({
+      userId,
+      roomSize,
+      roomType: roomAnalysis.roomType,
+      durationMs,
+      success: false,
+      error: error.message,
+      apiCost,
+    })
+
+    await trackEvent(EVENT_TYPES.GENERATE_FAIL, { userId, roomSize, error: error.message })
+
+    throw error
   }
 }
 
@@ -77,6 +130,31 @@ async function analyzeRoom(imageBuffer) {
   } catch (error) {
     console.error('Room analysis error:', error)
     return { roomType: 'living room', features: [] }
+  }
+}
+
+/**
+ * Generate image with timeout protection
+ * If Fal.ai takes > 20s, return fallback image
+ */
+async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis) {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('TIMEOUT')), FAL_TIMEOUT_MS)
+  })
+
+  try {
+    const result = await Promise.race([
+      generateImage(imageBuffer, roomSize, roomAnalysis),
+      timeoutPromise
+    ])
+    return result
+  } catch (error) {
+    if (error.message === 'TIMEOUT') {
+      console.warn(`Fal.ai timeout after ${FAL_TIMEOUT_MS}ms, using fallback`)
+      await trackEvent(EVENT_TYPES.GENERATE_TIMEOUT, { roomSize })
+      return { url: '/demo-after.jpg', timedOut: true }
+    }
+    throw error
   }
 }
 

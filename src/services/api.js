@@ -28,3 +28,44 @@ export async function checkQuota(userId = 'anonymous') {
 
   return response.json()
 }
+
+// Track upload event
+export async function trackUpload(userId = 'anonymous') {
+  try {
+    await fetch(`${API_BASE_URL}/api/track/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+  } catch (error) {
+    console.warn('Failed to track upload:', error)
+  }
+}
+
+// Track share event
+export async function trackShare(userId = 'anonymous', platform = 'unknown') {
+  try {
+    await fetch(`${API_BASE_URL}/api/track/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, platform }),
+    })
+  } catch (error) {
+    console.warn('Failed to track share:', error)
+  }
+}
+
+// Submit feedback
+export async function submitFeedback(userId, generationId, rating, comment = '') {
+  const response = await fetch(`${API_BASE_URL}/api/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, generationId, rating, comment }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to submit feedback')
+  }
+
+  return response.json()
+}

@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import multer from 'multer'
 import { generateStaging } from './services/staging.js'
 import { checkQuota, decrementQuota } from './services/quota.js'
+import { trackEvent, saveFeedback, getDashboardStats, EVENT_TYPES } from './services/analytics.js'
 
 dotenv.config()
 
@@ -47,7 +48,7 @@ app.post('/api/generate', upload.single('image'), async (req, res) => {
     }
 
     // Generate staging
-    const result = await generateStaging(imageFile.buffer, roomSize)
+    const result = await generateStaging(imageFile.buffer, roomSize, userId)
 
     // Decrement quota on success
     await decrementQuota(userId)
@@ -80,6 +81,54 @@ app.get('/api/quota/:userId', async (req, res) => {
     res.json({ remaining: quota.remaining })
   } catch (error) {
     res.status(500).json({ error: 'Failed to check quota' })
+  }
+})
+
+// Track upload event
+app.post('/api/track/upload', async (req, res) => {
+  const { userId } = req.body
+  await trackEvent(EVENT_TYPES.UPLOAD, { userId })
+  res.json({ success: true })
+})
+
+// Track share event
+app.post('/api/track/share', async (req, res) => {
+  const { userId, platform } = req.body
+  await trackEvent(EVENT_TYPES.SHARE, { userId, platform })
+  res.json({ success: true })
+})
+
+// Submit feedback
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { userId, generationId, rating, comment } = req.body
+    
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' })
+    }
+
+    const result = await saveFeedback(userId, generationId, rating, comment)
+    res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save feedback' })
+  }
+})
+
+// Dashboard stats (protected - add auth in production)
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    const { days = 7, key } = req.query
+    
+    // Simple API key protection for admin endpoint
+    const ADMIN_KEY = process.env.ADMIN_API_KEY
+    if (ADMIN_KEY && key !== ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    const stats = await getDashboardStats(parseInt(days))
+    res.json(stats)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get stats' })
   }
 })
 
