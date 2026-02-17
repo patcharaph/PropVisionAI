@@ -59,6 +59,12 @@ cp .env.example .env
 
 # Start dev server
 npm run dev
+
+# Run API smoke test (safe mode, no real AI image generation)
+npm run smoke
+
+# Run full smoke test (includes /api/generate real image generation)
+npm run smoke:full
 ```
 
 ### Environment Variables
@@ -153,23 +159,53 @@ If Fal.ai image generation exceeds 20 seconds:
 
 ## Deployment
 
-### Frontend (Vercel)
-```bash
-npm run build
-# Deploy dist/ to Vercel
-```
+### Deploy Checklist (Vercel + Cloud Run)
 
-### Backend (Google Cloud Run)
+### 1) Pre-deploy checklist
+- [ ] Rotate API keys immediately if any real keys were ever committed in `.env` or shared.
+- [ ] Confirm backend smoke tests pass:
 ```bash
 cd backend
-gcloud run deploy propvisionai-api --source .
+npm run smoke
+npm run smoke:full
 ```
+- [ ] Confirm Supabase schema is applied from `backend/supabase-schema.sql`.
 
-### Supabase Setup
+### 2) Deploy backend to Google Cloud Run
+- [ ] Set backend environment variables in Cloud Run:
+`PORT`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENROUTER_API_KEY`, `FAL_API_KEY`, `ADMIN_API_KEY`
+- [ ] Restrict CORS to your frontend domains (Vercel production + preview if needed).
+- [ ] Deploy:
 ```bash
-# Run the schema in Supabase SQL Editor
-# File: backend/supabase-schema.sql
+cd backend
+gcloud run deploy propvisionai-api --source . --region <your-region> --allow-unauthenticated
 ```
+- [ ] Save your backend URL (example: `https://propvisionai-api-xxxxx-uc.a.run.app`).
+
+### 3) Deploy frontend to Vercel
+- [ ] In Vercel project settings, set `VITE_API_URL` to your Cloud Run backend URL.
+- [ ] Build and deploy:
+```bash
+npm run build
+```
+- [ ] Verify production domain is correct and HTTPS is active.
+
+### 4) Post-deploy verification
+- [ ] Health check:
+```bash
+curl https://<backend-url>/health
+```
+- [ ] API checks:
+`GET /api/quota/:userId`, `POST /api/generate`, `GET /api/admin/stats?key=<ADMIN_API_KEY>`
+- [ ] Frontend flow check:
+Upload image -> Generate -> Result page -> Admin dashboard
+- [ ] Verify Cloud Run logs show no unhandled errors and latency is acceptable.
+
+### 5) Optional hardening
+- [ ] Add rate limiting on backend endpoints.
+- [ ] Use a stronger auth mechanism for admin dashboard.
+- [ ] Set Cloud Run minimum instances to reduce cold starts.
+- [ ] Add uptime/alert monitoring for `/health`.
 
 ## License
 

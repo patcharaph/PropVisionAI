@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStaging } from '../context/StagingContext'
+import { checkQuota, generateStaging } from '../services/api'
 import BetaBadge from '../components/BetaBadge'
 import RoomSizeSelector from '../components/RoomSizeSelector'
 import LoadingOverlay from '../components/LoadingOverlay'
@@ -18,6 +19,10 @@ export default function PreviewPage() {
     setIsGenerating,
     setGenerationProgress,
     setGeneratedImageUrl,
+    setDailyQuota,
+    setRoomType,
+    setError,
+    originalImage,
   } = useStaging()
 
   useEffect(() => {
@@ -25,6 +30,21 @@ export default function PreviewPage() {
       navigate('/')
     }
   }, [originalImageUrl, navigate])
+
+  useEffect(() => {
+    const loadQuota = async () => {
+      try {
+        const quota = await checkQuota('anonymous')
+        if (typeof quota?.remaining === 'number') {
+          setDailyQuota(quota.remaining)
+        }
+      } catch (error) {
+        console.warn('Failed to load quota:', error)
+      }
+    }
+
+    loadQuota()
+  }, [setDailyQuota])
 
   const handleChangeImage = (e) => {
     const file = e.target.files?.[0]
@@ -36,12 +56,13 @@ export default function PreviewPage() {
   }
 
   const handleGenerate = async () => {
-    if (!roomSize || dailyQuota <= 0) return
+    if (!roomSize || dailyQuota <= 0 || !originalImage) return
 
     setIsGenerating(true)
+    setError(null)
     setGenerationProgress(0)
 
-    // Simulate generation progress
+    // Keep UI responsive while waiting for AI generation
     const progressInterval = setInterval(() => {
       setGenerationProgress(prev => {
         if (prev >= 90) {
@@ -52,22 +73,31 @@ export default function PreviewPage() {
       })
     }, 500)
 
-    // Simulate API call - in production this would call the backend
     try {
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      
-      // For demo, use a placeholder generated image
-      setGeneratedImageUrl('/demo-after.jpg')
+      const result = await generateStaging(originalImage, roomSize, 'anonymous')
+      const generatedUrl = result?.data?.generatedImageUrl
+
+      if (!generatedUrl) {
+        throw new Error('No generated image returned from API')
+      }
+
+      setGeneratedImageUrl(generatedUrl)
+      setRoomType(result?.data?.roomType || 'living room')
+      if (typeof result?.data?.remaining === 'number') {
+        setDailyQuota(result.data.remaining)
+      }
       setGenerationProgress(100)
-      
+
       clearInterval(progressInterval)
-      
+
       setTimeout(() => {
         setIsGenerating(false)
         navigate('/result')
       }, 500)
     } catch (error) {
       console.error('Generation failed:', error)
+      setError(error.message || 'Generation failed')
+      alert(error.message || 'Generation failed')
       setIsGenerating(false)
       clearInterval(progressInterval)
     }
