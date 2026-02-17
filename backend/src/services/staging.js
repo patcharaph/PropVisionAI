@@ -199,6 +199,13 @@ Requirements:
     })
 
     const data = await response.json()
+    console.log('Fal.ai response:', JSON.stringify(data, null, 2))
+    
+    if (data.error || data.detail) {
+      console.error('Fal.ai API error:', data.error || data.detail)
+      return { url: '/demo-after.jpg' }
+    }
+    
     return { url: data.images?.[0]?.url || '/demo-after.jpg' }
   } catch (error) {
     console.error('Image generation error:', error)
