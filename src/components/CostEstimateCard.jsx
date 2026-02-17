@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStaging } from '../context/StagingContext'
+import { useI18n } from '../context/I18nContext'
 
 const tiers = ['LOW', 'MID', 'HIGH']
 
@@ -13,6 +14,7 @@ function formatCost(amount) {
 export default function CostEstimateCard() {
   const [selectedTier, setSelectedTier] = useState('MID')
   const { getRenovationCosts } = useStaging()
+  const { t } = useI18n()
   
   const costs = getRenovationCosts()
   
@@ -36,7 +38,9 @@ export default function CostEstimateCard() {
             <span className={`text-xs font-medium mb-1 ${
               selectedTier === tier ? 'text-gold' : 'text-gray-500'
             }`}>
-              {tier}
+              {tier === 'LOW' && t('cost.low')}
+              {tier === 'MID' && t('cost.mid')}
+              {tier === 'HIGH' && t('cost.high')}
             </span>
             <span className={`text-lg font-bold ${
               selectedTier === tier ? 'text-gold' : 'text-white'

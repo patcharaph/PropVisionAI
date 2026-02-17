@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Camera, ImagePlus } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 import { useStaging } from '../context/StagingContext'
+import { useI18n } from '../context/I18nContext'
 import { trackUpload } from '../services/api'
 import BetaBadge from '../components/BetaBadge'
 
@@ -11,6 +12,7 @@ export default function LandingPage() {
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const { setOriginalImage, setOriginalImageUrl } = useStaging()
+  const { t } = useI18n()
 
   const handleImageSelect = async (file) => {
     if (!file) return
@@ -46,11 +48,11 @@ export default function LandingPage() {
       <BetaBadge />
       
       <h1 className="text-3xl font-bold text-white mt-8 mb-3">
-        Virtual Staging
+        {t('common.appTitle')}
       </h1>
       
       <p className="text-gray-400 text-center max-w-xs mb-12">
-        See your property transformed in seconds with AI-powered modern design
+        {t('common.appSubtitle')}
       </p>
 
       <div className="w-full max-w-sm space-y-4">
@@ -59,7 +61,7 @@ export default function LandingPage() {
           className="w-full py-4 px-6 bg-gold hover:bg-gold-light text-black font-semibold rounded-xl flex items-center justify-center gap-3 transition-colors"
         >
           <Camera className="w-5 h-5" />
-          Take a Photo
+          {t('landing.takePhoto')}
         </button>
 
         <button
@@ -67,7 +69,7 @@ export default function LandingPage() {
           className="w-full py-4 px-6 bg-dark-card border border-dark-border hover:border-gold/50 text-white font-semibold rounded-xl flex items-center justify-center gap-3 transition-colors"
         >
           <ImagePlus className="w-5 h-5" />
-          Upload from Gallery
+          {t('landing.uploadFromGallery')}
         </button>
       </div>
 
@@ -89,8 +91,7 @@ export default function LandingPage() {
       />
 
       <p className="text-gray-500 text-xs text-center mt-auto pt-12 max-w-xs">
-        Beta version. Estimates for visualization only. Actual renovation costs may vary.
-        Not a professional quote or valuation.
+        {t('common.betaDisclaimer')}
       </p>
     </div>
   )

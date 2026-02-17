@@ -1,40 +1,37 @@
-import { useState, useEffect } from 'react'
-import { ArrowLeft, TrendingUp, Clock, AlertCircle, DollarSign, Users, Share2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, TrendingUp, Clock, AlertCircle, DollarSign, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../context/I18nContext'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
+  const { t, translateEventType } = useI18n()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [days, setDays] = useState(7)
 
-  useEffect(() => {
-    fetchStats()
-  }, [days])
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true)
     try {
       const adminKey = localStorage.getItem('adminKey') || ''
       const response = await fetch(
         `${API_BASE_URL}/api/admin/stats?days=${days}&key=${adminKey}`
       )
-      
+
       if (!response.ok) {
         if (response.status === 401) {
-          const key = prompt('Enter admin API key:')
+          const key = prompt(t('common.enterAdminKey'))
           if (key) {
             localStorage.setItem('adminKey', key)
-            fetchStats()
-            return
+            return fetchStats()
           }
         }
-        throw new Error('Failed to fetch stats')
+        throw new Error(t('common.failedToFetchStats'))
       }
-      
+
       const data = await response.json()
       setStats(data)
       setError(null)
@@ -43,12 +40,16 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [days, t])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
 
   const StatCard = ({ icon: Icon, label, value, subValue, color = 'gold' }) => (
     <div className="bg-dark-card border border-dark-border rounded-xl p-4">
       <div className="flex items-center gap-3 mb-2">
-        <Icon className={`w-5 h-5 text-${color}`} />
+        <Icon className={color === 'red-500' ? 'w-5 h-5 text-red-500' : 'w-5 h-5 text-gold'} />
         <span className="text-gray-400 text-sm">{label}</span>
       </div>
       <div className="text-2xl font-bold text-white">{value}</div>
@@ -65,24 +66,24 @@ export default function AdminDashboard() {
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Back</span>
+            <span>{t('common.back')}</span>
           </button>
-          
-          <h1 className="text-xl font-bold text-gold">Admin Dashboard</h1>
-          
+
+          <h1 className="text-xl font-bold text-gold">{t('admin.title')}</h1>
+
           <select
             value={days}
-            onChange={(e) => setDays(parseInt(e.target.value))}
+            onChange={(e) => setDays(parseInt(e.target.value, 10))}
             className="bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-white text-sm"
           >
-            <option value={1}>Last 24h</option>
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
+            <option value={1}>{t('admin.last24h')}</option>
+            <option value={7}>{t('admin.last7days')}</option>
+            <option value={30}>{t('admin.last30days')}</option>
           </select>
         </div>
 
         {loading && (
-          <div className="text-center text-gray-400 py-12">Loading stats...</div>
+          <div className="text-center text-gray-400 py-12">{t('admin.loading')}</div>
         )}
 
         {error && (
@@ -96,26 +97,26 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <StatCard
                 icon={TrendingUp}
-                label="Total Generations"
+                label={t('admin.totalGenerations')}
                 value={stats.totalGenerations}
               />
               <StatCard
                 icon={Clock}
-                label="Avg Time"
+                label={t('admin.avgTime')}
                 value={`${(stats.avgGenerationTime / 1000).toFixed(1)}s`}
-                subValue="per generation"
+                subValue={t('admin.perGeneration')}
               />
               <StatCard
                 icon={AlertCircle}
-                label="Error Rate"
+                label={t('admin.errorRate')}
                 value={`${stats.errorRate}%`}
                 color={parseFloat(stats.errorRate) > 10 ? 'red-500' : 'gold'}
               />
               <StatCard
                 icon={DollarSign}
-                label="Total Cost"
+                label={t('admin.totalCost')}
                 value={`$${stats.totalCost}`}
-                subValue="API costs"
+                subValue={t('admin.apiCosts')}
               />
             </div>
 
@@ -123,17 +124,17 @@ export default function AdminDashboard() {
               <div className="bg-dark-card border border-dark-border rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <Users className="w-5 h-5 text-gold" />
-                  Event Counts
+                  {t('admin.eventCounts')}
                 </h2>
                 <div className="space-y-3">
                   {Object.entries(stats.eventCounts || {}).map(([event, count]) => (
                     <div key={event} className="flex justify-between items-center">
-                      <span className="text-gray-400 text-sm">{event}</span>
+                      <span className="text-gray-400 text-sm">{translateEventType(event)}</span>
                       <span className="text-white font-medium">{count}</span>
                     </div>
                   ))}
                   {Object.keys(stats.eventCounts || {}).length === 0 && (
-                    <div className="text-gray-500 text-sm">No events recorded</div>
+                    <div className="text-gray-500 text-sm">{t('admin.noEventsRecorded')}</div>
                   )}
                 </div>
               </div>
@@ -141,7 +142,7 @@ export default function AdminDashboard() {
               <div className="bg-dark-card border border-dark-border rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-gold" />
-                  Daily Costs
+                  {t('admin.dailyCosts')}
                 </h2>
                 <div className="space-y-3">
                   {(stats.dailyCosts || []).map(({ date, cost }) => (
@@ -151,41 +152,41 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                   {(stats.dailyCosts || []).length === 0 && (
-                    <div className="text-gray-500 text-sm">No cost data</div>
+                    <div className="text-gray-500 text-sm">{t('admin.noCostData')}</div>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="mt-6 bg-dark-card border border-dark-border rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Conversion Funnel</h2>
+              <h2 className="text-lg font-semibold text-white mb-4">{t('admin.conversionFunnel')}</h2>
               <div className="flex items-center justify-between">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-white">
                     {stats.eventCounts?.upload || 0}
                   </div>
-                  <div className="text-xs text-gray-500">Uploads</div>
+                  <div className="text-xs text-gray-500">{t('admin.uploads')}</div>
                 </div>
-                <div className="text-gray-600">→</div>
+                <div className="text-gray-600">{'>'}</div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-white">
                     {stats.eventCounts?.generate_start || 0}
                   </div>
-                  <div className="text-xs text-gray-500">Started</div>
+                  <div className="text-xs text-gray-500">{t('admin.started')}</div>
                 </div>
-                <div className="text-gray-600">→</div>
+                <div className="text-gray-600">{'>'}</div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gold">
                     {stats.eventCounts?.generate_success || 0}
                   </div>
-                  <div className="text-xs text-gray-500">Success</div>
+                  <div className="text-xs text-gray-500">{t('admin.success')}</div>
                 </div>
-                <div className="text-gray-600">→</div>
+                <div className="text-gray-600">{'>'}</div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-white">
                     {stats.eventCounts?.share || 0}
                   </div>
-                  <div className="text-xs text-gray-500">Shared</div>
+                  <div className="text-xs text-gray-500">{t('admin.shared')}</div>
                 </div>
               </div>
             </div>

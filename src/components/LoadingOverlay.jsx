@@ -1,8 +1,10 @@
 import { Sparkles, Check } from 'lucide-react'
 import { useStaging } from '../context/StagingContext'
+import { useI18n } from '../context/I18nContext'
 
 export default function LoadingOverlay() {
   const { generationProgress } = useStaging()
+  const { t } = useI18n()
   const costReady = generationProgress > 30
 
   return (
@@ -19,18 +21,18 @@ export default function LoadingOverlay() {
       </div>
 
       <h2 className="text-xl font-semibold text-white mb-2">
-        Generating design...
+        {t('loading.generatingDesign')}
       </h2>
 
       {costReady && (
         <div className="flex items-center gap-2 text-gold">
           <Check className="w-4 h-4" />
-          <span className="text-sm">Cost estimate ready</span>
+          <span className="text-sm">{t('loading.costEstimateReady')}</span>
         </div>
       )}
 
       <p className="text-gray-500 text-sm mt-4">
-        This may take up to 25 seconds
+        {t('loading.mayTake')}
       </p>
     </div>
   )

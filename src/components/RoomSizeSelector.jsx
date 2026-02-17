@@ -1,33 +1,34 @@
 import { useStaging } from '../context/StagingContext'
+import { useI18n } from '../context/I18nContext'
 
-const sizes = [
-  { key: 'S', label: 'Small', range: '< 20 sqm' },
-  { key: 'M', label: 'Medium', range: '20-40 sqm' },
-  { key: 'L', label: 'Large', range: '40+ sqm' },
-]
+const sizes = ['S', 'M', 'L']
 
 export default function RoomSizeSelector() {
   const { roomSize, setRoomSize } = useStaging()
+  const { getRoomSizeMeta } = useI18n()
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      {sizes.map((size) => (
+      {sizes.map((sizeKey) => {
+        const size = getRoomSizeMeta(sizeKey)
+        return (
         <button
-          key={size.key}
-          onClick={() => setRoomSize(size.key)}
+          key={sizeKey}
+          onClick={() => setRoomSize(sizeKey)}
           className={`
             flex flex-col items-center py-4 px-3 rounded-xl border transition-all
-            ${roomSize === size.key 
+            ${roomSize === sizeKey
               ? 'bg-dark-card border-gold text-white' 
               : 'bg-transparent border-dark-border text-gray-400 hover:border-gray-500'
             }
           `}
         >
-          <span className="text-2xl font-bold mb-1">{size.key}</span>
+          <span className="text-2xl font-bold mb-1">{sizeKey}</span>
           <span className="text-sm">{size.label}</span>
           <span className="text-xs text-gray-500 mt-0.5">{size.range}</span>
         </button>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react'
 import { GripVertical } from 'lucide-react'
+import { useI18n } from '../context/I18nContext'
 
 export default function BeforeAfterSlider({ beforeImage, afterImage }) {
+  const { t } = useI18n()
   const [sliderPosition, setSliderPosition] = useState(50)
   const containerRef = useRef(null)
   const isDragging = useRef(false)
@@ -45,11 +47,11 @@ export default function BeforeAfterSlider({ beforeImage, afterImage }) {
       <div className="absolute inset-0">
         <img 
           src={afterImage} 
-          alt="After staging" 
+          alt={t('slider.after')}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-3 right-3 px-2 py-1 bg-dark-bg/80 backdrop-blur-sm rounded text-xs font-medium text-white">
-          AFTER
+          {t('slider.after')}
         </div>
       </div>
 
@@ -60,11 +62,11 @@ export default function BeforeAfterSlider({ beforeImage, afterImage }) {
       >
         <img 
           src={beforeImage} 
-          alt="Before staging" 
+          alt={t('slider.before')}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-3 left-3 px-2 py-1 bg-dark-bg/80 backdrop-blur-sm rounded text-xs font-medium text-white">
-          BEFORE
+          {t('slider.before')}
         </div>
       </div>
 
