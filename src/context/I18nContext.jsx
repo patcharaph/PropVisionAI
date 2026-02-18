@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 const I18nContext = createContext()
 const STORAGE_KEY = 'pvai_lang'
@@ -113,9 +113,9 @@ const MESSAGES = {
   th: {
     common: {
       appTitle: 'ออกแบบตกแต่งภายในให้สวยงามด้วย AI',
-      appSubtitle: 'เปลี่ยนภาพของคุณให้ดูทันสมัยด้วยดีไซน์โมเดิร์นในไม่กี่วินาทีด้วย AI',
+      appSubtitle: 'เปลี่ยนภาพของคุณให้ดูทันสมัยสไตล์โมเดิร์นในไม่กี่วินาที',
       betaTag: 'เบต้า',
-      betaDisclaimer: 'เวอร์ชันเบต้า ใช้เพื่อการแสดงภาพเท่านั้น ค่าใช้จ่ายในการรีโนเวทจริงอาจแตกต่างไปได้ ไม่ใช่ใบเสนอราคาหรือการประเมินมูลค่าโดยผู้เชี่ยวชาญ',
+      betaDisclaimer: 'เวอร์ชันเบต้า ใช้เพื่อการแสดงภาพเท่านั้น ไม่ใช่ใบเสนอราคาหรือการประเมินมูลค่าโดยผู้เชี่ยวชาญ ค่าใช้จ่ายในการรีโนเวทที่เกิดขึ้นจริงอาจแตกต่างไปได้',
       back: 'ย้อนกลับ',
       change: 'เปลี่ยนรูป',
       roomSizeTitle: 'ขนาดห้อง',
@@ -149,7 +149,7 @@ const MESSAGES = {
       estimatedRenovationCost: 'ประมาณการค่ารีโนเวท',
       detected: 'ตรวจพบ: {{roomType}}',
       renovationSummary:
-        'สำหรับการรีโนเวต{{roomType}}{{sizeLabel}} โดยทั่วไปอาจมีการปรับพื้นเป็นกระเบื้องหรือไม้โทนเรียบ ทาสีใหม่ด้วยโทนสีสุภาพ และเพิ่มเฟอร์นิเจอร์พร้อมไฟตกแต่งสไตล์โมเดิร์น เพื่อให้ได้บรรยากาศทันสมัยและดูดี',
+        'สำหรับการรีโนเวท{{roomType}}{{sizeLabel}} โดยทั่วไปอาจมีการเปลี่ยนพื้นเป็นกระเบื้องหรือไม้โทนเรียบ ทาสีใหม่ด้วยโทนสีสุภาพ และเพิ่มเฟอร์นิเจอร์พร้อมไฟตกแต่งสไตล์โมเดิร์น เพื่อให้บรรยากาศดูทันสมัยและน่าอยู่มากขึ้น',
       saveWithWatermark: 'บันทึกภาพพร้อมลายน้ำ',
       savingImage: 'กำลังบันทึก...',
       saveImageFailed: 'ไม่สามารถบันทึกภาพได้ กรุณาลองใหม่อีกครั้ง',
@@ -257,6 +257,12 @@ function normalizeRoomTypeKey(value) {
 
 export function I18nProvider({ children }) {
   const [language, setLanguage] = useState(getInitialLanguage)
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = language === 'th' ? 'th' : 'en'
+    }
+  }, [language])
 
   const updateLanguage = useCallback((nextLanguage) => {
     const safeLanguage = SUPPORTED_LANGS.includes(nextLanguage) ? nextLanguage : 'en'

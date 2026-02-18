@@ -90,7 +90,7 @@ export default function ResultPage() {
       const boxX = canvas.width - boxWidth - margin
       const boxY = canvas.height - boxHeight - margin
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+      ctx.fillStyle = 'rgba(107, 114, 128, 0.45)'
       ctx.fillRect(boxX, boxY, boxWidth, boxHeight)
       ctx.fillStyle = '#f5c84b'
       ctx.fillText(watermark, boxX + padding, boxY + boxHeight - Math.round(padding * 0.35))

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../context/I18nContext'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const THB_PER_USD = 32
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -12,6 +13,18 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [days, setDays] = useState(7)
+
+  const toNumber = (value) => {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const formatTHB = (usdValue) => {
+    const thbValue = toNumber(usdValue) * THB_PER_USD
+    return `฿${thbValue.toFixed(2)}`
+  }
+
+  const formatUSD = (usdValue) => `$${toNumber(usdValue).toFixed(4)}`
 
   const fetchStats = useCallback(async () => {
     setLoading(true)
@@ -115,8 +128,8 @@ export default function AdminDashboard() {
               <StatCard
                 icon={DollarSign}
                 label={t('admin.totalCost')}
-                value={`$${stats.totalCost}`}
-                subValue={t('admin.apiCosts')}
+                value={formatTHB(stats.totalCost)}
+                subValue={`${t('admin.apiCosts')} (${formatUSD(stats.totalCost)})`}
               />
             </div>
 
@@ -148,7 +161,7 @@ export default function AdminDashboard() {
                   {(stats.dailyCosts || []).map(({ date, cost }) => (
                     <div key={date} className="flex justify-between items-center">
                       <span className="text-gray-400 text-sm">{date}</span>
-                      <span className="text-white font-medium">${cost}</span>
+                      <span className="text-white font-medium">{formatTHB(cost)}</span>
                     </div>
                   ))}
                   {(stats.dailyCosts || []).length === 0 && (

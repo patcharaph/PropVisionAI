@@ -8,3 +8,11 @@
   --color-dark-card: #141414;
   --color-dark-border: #2A2A2A;
 }
+
+html[lang='th'] body,
+html[lang='th'] button,
+html[lang='th'] input,
+html[lang='th'] select,
+html[lang='th'] textarea {
+  font-family: 'Kanit', sans-serif;
+}

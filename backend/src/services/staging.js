@@ -12,17 +12,60 @@ const ROOM_DENSITY_PROMPTS = {
   L: 'spacious layout, multiple furniture groupings, generous spacing',
 }
 
+function normalizePositiveNumber(value, fallback) {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
 // API cost estimates (USD)
 const API_COSTS = {
-  OPENROUTER_HAIKU: 0.0003, // ~$0.25/1M input + image
-  FAL_FLUX: 0.01, // ~$0.01 per image
+  OPENROUTER_HAIKU_INPUT_PER_MILLION_TOKENS: normalizePositiveNumber(process.env.OPENROUTER_HAIKU_INPUT_PER_MTOKENS, 0.25),
+  OPENROUTER_HAIKU_OUTPUT_PER_MILLION_TOKENS: normalizePositiveNumber(process.env.OPENROUTER_HAIKU_OUTPUT_PER_MTOKENS, 1.25),
+  OPENROUTER_HAIKU_FALLBACK_PER_REQUEST: normalizePositiveNumber(process.env.OPENROUTER_HAIKU_FALLBACK_COST, 0.0003),
+  FAL_FLUX_PER_MEGAPIXEL: normalizePositiveNumber(process.env.FAL_FLUX_COST_PER_MP, 0.03),
+  FAL_FLUX_DEFAULT_MEGAPIXELS: normalizePositiveNumber(process.env.FAL_FLUX_DEFAULT_MEGAPIXELS, 1),
 }
 
 const FAL_TIMEOUT_MS = 20000 // 20 seconds timeout
 
-export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous') {
+function toMegapixels(imageDimensions) {
+  if (!imageDimensions?.width || !imageDimensions?.height) {
+    return API_COSTS.FAL_FLUX_DEFAULT_MEGAPIXELS
+  }
+  return (imageDimensions.width * imageDimensions.height) / 1_000_000
+}
+
+function estimateFalCost(imageDimensions) {
+  const megapixels = toMegapixels(imageDimensions)
+  return Number((megapixels * API_COSTS.FAL_FLUX_PER_MEGAPIXEL).toFixed(6))
+}
+
+function estimateOpenRouterHaikuCost(usage) {
+  const promptTokens = Number.parseInt(usage?.prompt_tokens ?? usage?.input_tokens, 10)
+  const completionTokens = Number.parseInt(usage?.completion_tokens ?? usage?.output_tokens, 10)
+
+  if (!Number.isFinite(promptTokens) || !Number.isFinite(completionTokens) || promptTokens < 0 || completionTokens < 0) {
+    return API_COSTS.OPENROUTER_HAIKU_FALLBACK_PER_REQUEST
+  }
+
+  const inputCost = (promptTokens / 1_000_000) * API_COSTS.OPENROUTER_HAIKU_INPUT_PER_MILLION_TOKENS
+  const outputCost = (completionTokens / 1_000_000) * API_COSTS.OPENROUTER_HAIKU_OUTPUT_PER_MILLION_TOKENS
+  return Number((inputCost + outputCost).toFixed(6))
+}
+
+function getImageDimensionsFromFalResponse(data) {
+  const firstImage = data?.images?.[0]
+  const width = Number.parseInt(firstImage?.width, 10)
+  const height = Number.parseInt(firstImage?.height, 10)
+  if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+    return { width, height }
+  }
+  return null
+}
+
+export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous', imageDimensions = null) {
   const startTime = Date.now()
-  let roomAnalysis = { roomType: 'living room', features: [] }
+  let roomAnalysis = { roomType: 'living room', features: [], apiCost: 0 }
   let apiCost = 0
 
   try {
@@ -30,11 +73,11 @@ export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous
 
     // Step 1: Analyze room with OpenRouter
     roomAnalysis = await analyzeRoom(imageBuffer)
-    apiCost += API_COSTS.OPENROUTER_HAIKU
+    apiCost += roomAnalysis.apiCost || 0
     
     // Step 2: Generate staged image with Fal.ai (with timeout)
-    const generatedImage = await generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis)
-    apiCost += API_COSTS.FAL_FLUX
+    const generatedImage = await generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis, imageDimensions)
+    apiCost += generatedImage.apiCost || 0
 
     const durationMs = Date.now() - startTime
 
@@ -79,21 +122,29 @@ export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous
 
 async function analyzeRoom(imageBuffer) {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+  const OPENROUTER_SITE_URL = process.env.OPENROUTER_SITE_URL || ''
+  const OPENROUTER_APP_NAME = process.env.OPENROUTER_APP_NAME || 'PropVisionAI'
   
   if (!OPENROUTER_API_KEY) {
     console.warn('OpenRouter API key not configured, using default room type')
-    return { roomType: 'living room', features: [] }
+    return { roomType: 'living room', features: [], apiCost: 0 }
   }
 
   try {
     const base64Image = imageBuffer.toString('base64')
     
+    const headers = {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'X-Title': OPENROUTER_APP_NAME,
+    }
+    if (OPENROUTER_SITE_URL) {
+      headers['HTTP-Referer'] = OPENROUTER_SITE_URL
+    }
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         model: 'anthropic/claude-3-haiku',
         messages: [
@@ -125,11 +176,12 @@ async function analyzeRoom(imageBuffer) {
     
     return {
       roomType: parsed.roomType || 'living room',
-      features: parsed.features || []
+      features: parsed.features || [],
+      apiCost: estimateOpenRouterHaikuCost(data?.usage),
     }
   } catch (error) {
     console.error('Room analysis error:', error)
-    return { roomType: 'living room', features: [] }
+    return { roomType: 'living room', features: [], apiCost: 0 }
   }
 }
 
@@ -137,14 +189,14 @@ async function analyzeRoom(imageBuffer) {
  * Generate image with timeout protection
  * If Fal.ai takes > 20s, return fallback image
  */
-async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis) {
+async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis, imageDimensions) {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('TIMEOUT')), FAL_TIMEOUT_MS)
   })
 
   try {
     const result = await Promise.race([
-      generateImage(imageBuffer, roomSize, roomAnalysis),
+      generateImage(imageBuffer, roomSize, roomAnalysis, imageDimensions),
       timeoutPromise
     ])
     return result
@@ -152,18 +204,18 @@ async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis) {
     if (error.message === 'TIMEOUT') {
       console.warn(`Fal.ai timeout after ${FAL_TIMEOUT_MS}ms, using fallback`)
       await trackEvent(EVENT_TYPES.GENERATE_TIMEOUT, { roomSize })
-      return { url: '/demo-after.jpg', timedOut: true }
+      return { url: '/demo-after.jpg', timedOut: true, apiCost: estimateFalCost(imageDimensions) }
     }
     throw error
   }
 }
 
-async function generateImage(imageBuffer, roomSize, roomAnalysis) {
+async function generateImage(imageBuffer, roomSize, roomAnalysis, imageDimensions) {
   const FAL_API_KEY = process.env.FAL_API_KEY
   
   if (!FAL_API_KEY) {
     console.warn('Fal.ai API key not configured, returning placeholder')
-    return { url: '/demo-after.jpg' }
+    return { url: '/demo-after.jpg', apiCost: 0 }
   }
 
   const densityPrompt = ROOM_DENSITY_PROMPTS[roomSize]
@@ -203,12 +255,16 @@ Requirements:
     
     if (data.error || data.detail) {
       console.error('Fal.ai API error:', data.error || data.detail)
-      return { url: '/demo-after.jpg' }
+      return { url: '/demo-after.jpg', apiCost: estimateFalCost(imageDimensions) }
     }
-    
-    return { url: data.images?.[0]?.url || '/demo-after.jpg' }
+
+    const billedDimensions = getImageDimensionsFromFalResponse(data) || imageDimensions
+    return {
+      url: data.images?.[0]?.url || '/demo-after.jpg',
+      apiCost: estimateFalCost(billedDimensions),
+    }
   } catch (error) {
     console.error('Image generation error:', error)
-    return { url: '/demo-after.jpg' }
+    return { url: '/demo-after.jpg', apiCost: 0 }
   }
 }

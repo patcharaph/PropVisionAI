@@ -1,10 +1,35 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
+async function getImageDimensions(file) {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      resolve({ width: image.naturalWidth, height: image.naturalHeight })
+      URL.revokeObjectURL(objectUrl)
+    }
+
+    image.onerror = () => {
+      resolve(null)
+      URL.revokeObjectURL(objectUrl)
+    }
+
+    image.src = objectUrl
+  })
+}
+
 export async function generateStaging(imageFile, roomSize, userId = 'anonymous') {
   const formData = new FormData()
   formData.append('image', imageFile)
   formData.append('roomSize', roomSize)
   formData.append('userId', userId)
+
+  const dimensions = await getImageDimensions(imageFile)
+  if (dimensions?.width && dimensions?.height) {
+    formData.append('imageWidth', String(dimensions.width))
+    formData.append('imageHeight', String(dimensions.height))
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/generate`, {
     method: 'POST',
