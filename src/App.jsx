@@ -6,6 +6,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import { StagingProvider } from './context/StagingContext'
 import { I18nProvider } from './context/I18nContext'
 import LanguageSwitcher from './components/LanguageSwitcher'
+import InstallButton from './components/InstallButton'
 
 function App() {
   return (
@@ -13,7 +14,10 @@ function App() {
       <I18nProvider>
         <StagingProvider>
           <div className="min-h-screen bg-dark-bg text-white">
-            <LanguageSwitcher />
+            <div className="flex items-center justify-between px-6 py-3">
+              <LanguageSwitcher />
+              <InstallButton />
+            </div>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/preview" element={<PreviewPage />} />
