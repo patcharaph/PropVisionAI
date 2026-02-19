@@ -213,6 +213,48 @@ Upload image -> Generate -> Result page -> Admin dashboard
 - [ ] Set Cloud Run minimum instances to reduce cold starts.
 - [ ] Add uptime/alert monitoring for `/health`.
 
+## PWA & TWA
+
+### PWA Features
+- ✅ Installable on mobile/desktop
+- ✅ Offline support with Service Worker
+- ✅ App icons for all sizes
+- ✅ Standalone display mode
+
+### Install as PWA
+1. Open the app in Chrome/Safari
+2. Click "Add to Home Screen" or install prompt
+3. App will work like a native app
+
+### Build TWA (Android App)
+
+1. **Use PWABuilder (Recommended):**
+   - Go to [pwabuilder.com](https://pwabuilder.com)
+   - Enter your deployed URL
+   - Download Android package (TWA)
+   - Upload to Google Play Console
+
+2. **Or use Bubblewrap CLI:**
+   - See [Bubblewrap documentation](https://developer.chrome.com/docs/android/trusted-web-activity/)
+
+3. **Generate signing key:**
+```bash
+keytool -genkey -v -keystore propvisionai.keystore -alias propvisionai -keyalg RSA -keysize 2048 -validity 10000
+```
+
+4. **Get SHA256 fingerprint:**
+```bash
+keytool -list -v -keystore propvisionai.keystore -alias propvisionai
+```
+
+5. **Update assetlinks.json:**
+Replace `YOUR_SHA256_FINGERPRINT_HERE` in `public/.well-known/assetlinks.json` with your fingerprint.
+
+### TWA Requirements
+- App must be served over HTTPS
+- `assetlinks.json` must be accessible at `/.well-known/assetlinks.json`
+- Domain verification must pass
+
 ## License
 
 MIT
