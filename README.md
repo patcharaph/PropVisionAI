@@ -7,6 +7,7 @@ AI-powered virtual staging for real estate properties. Upload a room photo, sele
 - **Image Upload** - Take a photo or upload from gallery with automatic compression
 - **Room Size Selection** - Small (<20 sqm), Medium (20-40 sqm), Large (40+ sqm)
 - **AI Virtual Staging** - Modern Scandinavian interior design transformation
+- **Staging Style Presets** - Default Premium, Luxury Classic, Modern Luxury
 - **Before/After Slider** - Interactive comparison view
 - **Renovation Cost Estimate** - Thailand market pricing (LOW/MID/HIGH tiers)
 - **Analytics Dashboard** - Track generation time, error rate, cost per day
@@ -123,6 +124,11 @@ PropVisionAI/
 | POST | `/api/track/share` | Track share event |
 | POST | `/api/feedback` | Submit user feedback |
 | GET | `/api/admin/stats` | Get dashboard stats (protected) |
+
+`POST /api/generate` accepts optional form field `promptPreset`:
+- `default_premium` (default)
+- `luxury_classic`
+- `modern_luxury`
 
 ## Admin Dashboard
 

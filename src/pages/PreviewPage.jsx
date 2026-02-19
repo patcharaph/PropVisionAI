@@ -5,6 +5,7 @@ import { useI18n } from '../context/I18nContext'
 import { checkQuota, generateStaging } from '../services/api'
 import BetaBadge from '../components/BetaBadge'
 import RoomSizeSelector from '../components/RoomSizeSelector'
+import PromptPresetSelector from '../components/PromptPresetSelector'
 import LoadingOverlay from '../components/LoadingOverlay'
 
 const UPGRADE_URL = import.meta.env.VITE_UPGRADE_URL || ''
@@ -18,6 +19,7 @@ export default function PreviewPage() {
     setOriginalImage,
     setOriginalImageUrl,
     roomSize, 
+    promptPreset,
     dailyQuota,
     isGenerating,
     setIsGenerating,
@@ -78,7 +80,7 @@ export default function PreviewPage() {
     }, 500)
 
     try {
-      const result = await generateStaging(originalImage, roomSize, 'anonymous')
+      const result = await generateStaging(originalImage, roomSize, 'anonymous', promptPreset)
       const generatedUrl = result?.data?.generatedImageUrl
 
       if (!generatedUrl) {
@@ -161,6 +163,13 @@ export default function PreviewPage() {
           {t('common.roomSizeTitle')}
         </h2>
         <RoomSizeSelector />
+      </div>
+
+      <div className="w-full max-w-sm mt-6">
+        <h2 className="text-gray-400 text-sm font-medium mb-4 tracking-wider">
+          STAGING STYLE
+        </h2>
+        <PromptPresetSelector />
       </div>
 
       <div className="w-full max-w-sm mt-8">

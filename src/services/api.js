@@ -19,11 +19,12 @@ async function getImageDimensions(file) {
   })
 }
 
-export async function generateStaging(imageFile, roomSize, userId = 'anonymous') {
+export async function generateStaging(imageFile, roomSize, userId = 'anonymous', promptPreset = 'default_premium') {
   const formData = new FormData()
   formData.append('image', imageFile)
   formData.append('roomSize', roomSize)
   formData.append('userId', userId)
+  formData.append('promptPreset', promptPreset)
 
   const dimensions = await getImageDimensions(imageFile)
   if (dimensions?.width && dimensions?.height) {
