@@ -54,3 +54,14 @@ coverage
 
 # TypeScript
 *.tsbuildinfo
+
+# Android/TWA sensitive and build artifacts
+twa/android.keystore
+twa/*.jks
+twa/*.keystore
+twa/*.aab
+twa/*.apk
+twa/*.idsig
+twa/.gradle/
+twa/build/
+twa/app/build/

@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage'
 import PreviewPage from './pages/PreviewPage'
 import ResultPage from './pages/ResultPage'
 import AdminDashboard from './pages/AdminDashboard'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import { StagingProvider } from './context/StagingContext'
 import { I18nProvider } from './context/I18nContext'
 import LanguageSwitcher from './components/LanguageSwitcher'
@@ -23,6 +24,7 @@ function App() {
               <Route path="/preview" element={<PreviewPage />} />
               <Route path="/result" element={<ResultPage />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             </Routes>
           </div>
         </StagingProvider>

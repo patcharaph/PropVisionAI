@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.propvisionai.app",
+      "package_name": "app.vercel.prop_vision_ai_ten.twa",
       "sha256_cert_fingerprints": [
-        "YOUR_SHA256_FINGERPRINT_HERE"
+        "DA:DC:4D:B0:76:8F:5A:C0:DF:47:A4:E1:A9:17:32:36:AF:B6:7B:33:C6:8A:61:EB:90:38:C0:82:A2:BD:28:55"
       ]
     }
   }
