@@ -1,21 +1,17 @@
-const CACHE_VERSION = 'propvisionai-v1'
-const CACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/demo-after.jpg',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-]
+const CACHE_VERSION = 'propvisionai-v2'
+const ASSET_CACHE = `assets-${CACHE_VERSION}`
 
-// Install event - cache essential assets
+function isFingerprintedAsset(requestUrl) {
+  if (requestUrl.origin !== self.location.origin) {
+    return false
+  }
+
+  // Vite build output: /assets/<name>-<hash>.<ext>
+  return /^\/assets\/.+-[A-Za-z0-9_-]{6,}\.[A-Za-z0-9]+$/.test(requestUrl.pathname)
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => {
-      console.log('[SW] Caching essential files')
-      return cache.addAll(CACHE_URLS)
-    }).then(() => self.skipWaiting())
-  )
+  event.waitUntil(self.skipWaiting())
 })
 
 // Activate event - remove old caches
@@ -24,7 +20,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_VERSION) {
+          if (cacheName !== ASSET_CACHE) {
             console.log('[SW] Deleting old cache:', cacheName)
             return caches.delete(cacheName)
           }
@@ -55,9 +51,22 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Cache first for assets
+  const requestUrl = new URL(event.request.url)
+
+  // Never cache document navigations to avoid stale routes/pages.
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
+  // Cache first only for fingerprinted build assets.
+  if (!isFingerprintedAsset(requestUrl)) {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
+    caches.open(ASSET_CACHE).then((cache) => cache.match(event.request).then((response) => {
       if (response) {
         return response
       }
@@ -70,15 +79,12 @@ self.addEventListener('fetch', (event) => {
 
         // Clone response and add to cache
         const responseClone = response.clone()
-        caches.open(CACHE_VERSION).then((cache) => {
-          cache.put(event.request, responseClone)
-        })
+        cache.put(event.request, responseClone)
 
         return response
       }).catch(() => {
-        // Return offline placeholder if no cache
-        return new Response('Offline', { status: 503 })
+        return new Response('Offline asset unavailable', { status: 503 })
       })
-    })
+    }))
   )
 })
