@@ -1,5 +1,4 @@
 import { logGeneration, trackEvent, EVENT_TYPES } from './analytics.js'
-import { buildPrompt, resolvePromptPreset } from './promptPresets.js'
 
 const RENOVATION_COSTS = {
   S: { LOW: 80000, MID: 150000, HIGH: 300000 },
@@ -64,13 +63,7 @@ function getImageDimensionsFromFalResponse(data) {
   return null
 }
 
-export async function generateStaging(
-  imageBuffer,
-  roomSize,
-  userId = 'anonymous',
-  imageDimensions = null,
-  promptPreset = 'default_premium'
-) {
+export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous', imageDimensions = null) {
   const startTime = Date.now()
   let roomAnalysis = { roomType: 'living room', features: [], apiCost: 0 }
   let apiCost = 0
@@ -83,13 +76,7 @@ export async function generateStaging(
     apiCost += roomAnalysis.apiCost || 0
     
     // Step 2: Generate staged image with Fal.ai (with timeout)
-    const generatedImage = await generateImageWithTimeout(
-      imageBuffer,
-      roomSize,
-      roomAnalysis,
-      imageDimensions,
-      promptPreset
-    )
+    const generatedImage = await generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis, imageDimensions)
     apiCost += generatedImage.apiCost || 0
 
     const durationMs = Date.now() - startTime
@@ -109,7 +96,6 @@ export async function generateStaging(
     return {
       imageUrl: generatedImage.url,
       roomType: roomAnalysis.roomType,
-      promptPreset: generatedImage.promptPreset || promptPreset,
       costs: RENOVATION_COSTS[roomSize],
       durationMs,
       timedOut: generatedImage.timedOut || false,
@@ -203,15 +189,14 @@ async function analyzeRoom(imageBuffer) {
  * Generate image with timeout protection
  * If Fal.ai takes > 20s, return fallback image
  */
-async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis, imageDimensions, promptPreset) {
-  const safePreset = resolvePromptPreset(promptPreset)
+async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis, imageDimensions) {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('TIMEOUT')), FAL_TIMEOUT_MS)
   })
 
   try {
     const result = await Promise.race([
-      generateImage(imageBuffer, roomSize, roomAnalysis, imageDimensions, safePreset),
+      generateImage(imageBuffer, roomSize, roomAnalysis, imageDimensions),
       timeoutPromise
     ])
     return result
@@ -219,35 +204,37 @@ async function generateImageWithTimeout(imageBuffer, roomSize, roomAnalysis, ima
     if (error.message === 'TIMEOUT') {
       console.warn(`Fal.ai timeout after ${FAL_TIMEOUT_MS}ms, using fallback`)
       await trackEvent(EVENT_TYPES.GENERATE_TIMEOUT, { roomSize })
-      return {
-        url: '/demo-after.jpg',
-        timedOut: true,
-        apiCost: estimateFalCost(imageDimensions),
-        promptPreset: safePreset,
-      }
+      return { url: '/demo-after.jpg', timedOut: true, apiCost: estimateFalCost(imageDimensions) }
     }
     throw error
   }
 }
 
-async function generateImage(imageBuffer, roomSize, roomAnalysis, imageDimensions, promptPreset) {
+async function generateImage(imageBuffer, roomSize, roomAnalysis, imageDimensions) {
   const FAL_API_KEY = process.env.FAL_API_KEY
-  
+
   if (!FAL_API_KEY) {
     console.warn('Fal.ai API key not configured, returning placeholder')
-    return { url: '/demo-after.jpg', apiCost: 0, promptPreset }
+    return { url: '/demo-after.jpg', apiCost: 0 }
   }
 
   const densityPrompt = ROOM_DENSITY_PROMPTS[roomSize]
-  const { prompt, negativePrompt, preset } = buildPrompt({
-    preset: promptPreset,
-    roomType: roomAnalysis.roomType,
-    densityPrompt,
-  })
+
+  const prompt = `Transform this ${roomAnalysis.roomType} into a modern, professionally staged interior.
+Style: Modern Scandinavian minimalist design.
+Requirements:
+- ${densityPrompt}
+- Clean lines, neutral color palette (whites, grays, warm wood tones)
+- Natural lighting enhancement
+- Remove clutter and personal items
+- Add contemporary furniture and decor
+- Maintain original room layout and window positions
+- Do NOT alter structural walls or windows
+- Professional real estate photography quality`
 
   try {
     const base64Image = imageBuffer.toString('base64')
-    
+
     const response = await fetch('https://fal.run/fal-ai/flux/dev/image-to-image', {
       method: 'POST',
       headers: {
@@ -257,7 +244,6 @@ async function generateImage(imageBuffer, roomSize, roomAnalysis, imageDimension
       body: JSON.stringify({
         image_url: `data:image/jpeg;base64,${base64Image}`,
         prompt,
-        negative_prompt: negativePrompt,
         strength: 0.75,
         num_inference_steps: 28,
         guidance_scale: 7.5,
@@ -266,20 +252,19 @@ async function generateImage(imageBuffer, roomSize, roomAnalysis, imageDimension
 
     const data = await response.json()
     console.log('Fal.ai response:', JSON.stringify(data, null, 2))
-    
+
     if (data.error || data.detail) {
       console.error('Fal.ai API error:', data.error || data.detail)
-      return { url: '/demo-after.jpg', apiCost: estimateFalCost(imageDimensions), promptPreset: preset }
+      return { url: '/demo-after.jpg', apiCost: estimateFalCost(imageDimensions) }
     }
 
     const billedDimensions = getImageDimensionsFromFalResponse(data) || imageDimensions
     return {
       url: data.images?.[0]?.url || '/demo-after.jpg',
       apiCost: estimateFalCost(billedDimensions),
-      promptPreset: preset,
     }
   } catch (error) {
     console.error('Image generation error:', error)
-    return { url: '/demo-after.jpg', apiCost: 0, promptPreset }
+    return { url: '/demo-after.jpg', apiCost: 0 }
   }
 }

@@ -1,5 +1,4 @@
 import { createContext, useContext, useState } from 'react'
-import { DEFAULT_PROMPT_PRESET } from '../constants/promptPresets'
 
 const StagingContext = createContext()
 
@@ -20,7 +19,6 @@ export function StagingProvider({ children }) {
   const [originalImageUrl, setOriginalImageUrl] = useState(null)
   const [generatedImageUrl, setGeneratedImageUrl] = useState(null)
   const [roomSize, setRoomSize] = useState(null)
-  const [promptPreset, setPromptPreset] = useState(DEFAULT_PROMPT_PRESET)
   const [roomType, setRoomType] = useState('living room')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationProgress, setGenerationProgress] = useState(0)
@@ -42,7 +40,6 @@ export function StagingProvider({ children }) {
     setOriginalImageUrl(null)
     setGeneratedImageUrl(null)
     setRoomSize(null)
-    setPromptPreset(DEFAULT_PROMPT_PRESET)
     setRoomType('living room')
     setIsGenerating(false)
     setGenerationProgress(0)
@@ -58,8 +55,6 @@ export function StagingProvider({ children }) {
     setGeneratedImageUrl,
     roomSize,
     setRoomSize,
-    promptPreset,
-    setPromptPreset,
     roomType,
     setRoomType,
     isGenerating,

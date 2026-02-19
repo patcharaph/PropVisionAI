@@ -27,7 +27,7 @@ app.get('/health', (req, res) => {
 // Generate staging endpoint
 app.post('/api/generate', upload.single('image'), async (req, res) => {
   try {
-    const { roomSize, userId, imageWidth, imageHeight, promptPreset } = req.body
+    const { roomSize, userId, imageWidth, imageHeight } = req.body
     const imageFile = req.file
 
     if (!imageFile) {
@@ -54,7 +54,7 @@ app.post('/api/generate', upload.single('image'), async (req, res) => {
       ? { width: parsedWidth, height: parsedHeight }
       : null
 
-    const result = await generateStaging(imageFile.buffer, roomSize, userId, imageDimensions, promptPreset)
+    const result = await generateStaging(imageFile.buffer, roomSize, userId, imageDimensions)
 
     // Decrement quota on success
     await decrementQuota(userId)
@@ -65,7 +65,6 @@ app.post('/api/generate', upload.single('image'), async (req, res) => {
         generatedImageUrl: result.imageUrl,
         roomType: result.roomType,
         roomSize,
-        promptPreset: result.promptPreset,
         costs: result.costs,
         remaining: quotaCheck.remaining - 1
       }
