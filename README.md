@@ -250,6 +250,17 @@ keytool -list -v -keystore propvisionai.keystore -alias propvisionai
 5. **Update assetlinks.json:**
 Replace `YOUR_SHA256_FINGERPRINT_HERE` in `public/.well-known/assetlinks.json` with your fingerprint.
 
+6. **Build signed Android App Bundle (`.aab`) for Play Console:**
+```bash
+cd twa
+./gradlew bundleRelease \
+  -PPROP_VISION_STORE_FILE=/absolute/path/to/propvisionai.keystore \
+  -PPROP_VISION_STORE_PASSWORD=your_store_password \
+  -PPROP_VISION_KEY_ALIAS=propvisionai \
+  -PPROP_VISION_KEY_PASSWORD=your_key_password
+```
+Output: `twa/app/build/outputs/bundle/release/app-release.aab`
+
 ### TWA Requirements
 - App must be served over HTTPS
 - `assetlinks.json` must be accessible at `/.well-known/assetlinks.json`

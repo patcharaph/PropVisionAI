@@ -85,7 +85,7 @@ app.get('/api/quota/:userId', async (req, res) => {
     const { userId } = req.params
     const quota = await checkQuota(userId)
     res.json({ remaining: quota.remaining })
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to check quota' })
   }
 })
@@ -115,7 +115,7 @@ app.post('/api/feedback', async (req, res) => {
 
     const result = await saveFeedback(userId, generationId, rating, comment)
     res.json(result)
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to save feedback' })
   }
 })
@@ -133,7 +133,7 @@ app.get('/api/admin/stats', async (req, res) => {
 
     const stats = await getDashboardStats(parseInt(days))
     res.json(stats)
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to get stats' })
   }
 })
