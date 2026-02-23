@@ -12,6 +12,8 @@ const ROOM_DENSITY_PROMPTS = {
   L: 'spacious layout, multiple furniture groupings, generous spacing',
 }
 
+const NEGATIVE_PROMPT = 'blurry, distorted, low quality, cartoon, anime, painting, sketch, watermark, text, deformed furniture, unrealistic proportions, oversaturated, dark, underexposed'
+
 function normalizePositiveNumber(value, fallback) {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
@@ -221,13 +223,13 @@ async function generateImage(imageBuffer, roomSize, roomAnalysis, imageDimension
   const densityPrompt = ROOM_DENSITY_PROMPTS[roomSize]
 
   const prompt = `Transform this ${roomAnalysis.roomType} into a modern, professionally staged interior.
-Style: Modern Scandinavian minimalist design.
+Style: Modern luxury Scandinavian minimalist design.
 Requirements:
 - ${densityPrompt}
 - Clean lines, neutral color palette (whites, grays, warm wood tones)
 - Natural lighting enhancement
 - Remove clutter and personal items
-- Add contemporary furniture and decor
+- Add contemporary luxury furniture and decor
 - Maintain original room layout and window positions
 - Do NOT alter structural walls or windows
 - Professional real estate photography quality`
@@ -244,6 +246,7 @@ Requirements:
       body: JSON.stringify({
         image_url: `data:image/jpeg;base64,${base64Image}`,
         prompt,
+        negative_prompt: NEGATIVE_PROMPT,
         strength: 0.75,
         num_inference_steps: 28,
         guidance_scale: 7.5,
