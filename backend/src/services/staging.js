@@ -26,6 +26,12 @@ const API_COSTS = {
   OPENROUTER_HAIKU_FALLBACK_PER_REQUEST: normalizePositiveNumber(process.env.OPENROUTER_HAIKU_FALLBACK_COST, 0.0003),
   FAL_FLUX_PER_MEGAPIXEL: normalizePositiveNumber(process.env.FAL_FLUX_COST_PER_MP, 0.03),
   FAL_FLUX_DEFAULT_MEGAPIXELS: normalizePositiveNumber(process.env.FAL_FLUX_DEFAULT_MEGAPIXELS, 1),
+  // Cloud Run: default 1 vCPU, 512 MiB
+  CLOUD_RUN_VCPU_PER_SECOND: normalizePositiveNumber(process.env.CLOUD_RUN_VCPU_PER_SEC, 0.000024),
+  CLOUD_RUN_MEMORY_GIB_PER_SECOND: normalizePositiveNumber(process.env.CLOUD_RUN_MEM_PER_SEC, 0.0000025),
+  CLOUD_RUN_VCPU_COUNT: normalizePositiveNumber(process.env.CLOUD_RUN_VCPU_COUNT, 1),
+  CLOUD_RUN_MEMORY_GIB: normalizePositiveNumber(process.env.CLOUD_RUN_MEMORY_GIB, 0.5),
+  CLOUD_RUN_PER_REQUEST: normalizePositiveNumber(process.env.CLOUD_RUN_PER_REQUEST, 0.0000004),
 }
 
 const FAL_TIMEOUT_MS = 20000 // 20 seconds timeout
@@ -40,6 +46,13 @@ function toMegapixels(imageDimensions) {
 function estimateFalCost(imageDimensions) {
   const megapixels = toMegapixels(imageDimensions)
   return Number((megapixels * API_COSTS.FAL_FLUX_PER_MEGAPIXEL).toFixed(6))
+}
+
+function estimateCloudRunCost(durationMs) {
+  const seconds = (durationMs || 0) / 1000
+  const vcpuCost = seconds * API_COSTS.CLOUD_RUN_VCPU_PER_SECOND * API_COSTS.CLOUD_RUN_VCPU_COUNT
+  const memoryCost = seconds * API_COSTS.CLOUD_RUN_MEMORY_GIB_PER_SECOND * API_COSTS.CLOUD_RUN_MEMORY_GIB
+  return Number((vcpuCost + memoryCost + API_COSTS.CLOUD_RUN_PER_REQUEST).toFixed(6))
 }
 
 function estimateOpenRouterHaikuCost(usage) {
@@ -82,6 +95,7 @@ export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous
     apiCost += generatedImage.apiCost || 0
 
     const durationMs = Date.now() - startTime
+    apiCost += estimateCloudRunCost(durationMs)
 
     // Log successful generation
     await logGeneration({
@@ -104,6 +118,7 @@ export async function generateStaging(imageBuffer, roomSize, userId = 'anonymous
     }
   } catch (error) {
     const durationMs = Date.now() - startTime
+    apiCost += estimateCloudRunCost(durationMs)
 
     // Log failed generation
     await logGeneration({
